@@ -1,26 +1,34 @@
 #include <LowPower.h>
 
-#define DAYLIGHT_THRESHOLD 350
+#define DAYLIGHT_THRESHOLD 250
 #define MOTOR_DURATION 3000
+#define ROOF_PIN 2
+#define FLOOR_PIN 3
+#define DOWN true
+#define UP false
+#define SPEED 128
 
 int enablePin = 11;
 int in1Pin = 10;
 int in2Pin = 9;
-int switchPin = 7;
 const int analogInPin = A0;
 const int speed = 128;
 boolean direction = true;
 boolean prevdirection = false;
 int sensorValue = 0;
 int i;
+boolean doorStatus = DOWN;
 
 void setup()
 {
   pinMode(in1Pin, OUTPUT);
   pinMode(in2Pin, OUTPUT);
   pinMode(enablePin, OUTPUT);
-  pinMode(switchPin, INPUT_PULLUP);
+  pinMode(ROOF_PIN, INPUT_PULLUP);
+  pinMode(FLOOR_PIN, INPUT_PULLUP);
   pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(ROOF_PIN, HIGH);
+  digitalWrite(FLOOR_PIN, HIGH);
   Serial.begin(9600);
   Serial.println("Initiated");
 }
@@ -37,46 +45,49 @@ void loop()
   }
   */
   //delay(20);
-
   sensorValue = analogRead(analogInPin);
-
-  digitalWrite(LED_BUILTIN, HIGH);   // turn the LED on (HIGH is the voltage level)
-  delay(1000);                       // wait for a second
-  digitalWrite(LED_BUILTIN, LOW);    // turn the LED off by making the voltage LOW
-  delay(1000);
 
   Serial.print("sensor = ");
   Serial.println(sensorValue);
   delay(500);
 
   //if it is daylight, & the last action is NOT opening, open the door
-  if (sensorValue >= DAYLIGHT_THRESHOLD && prevdirection == direction){
+  if (sensorValue >= DAYLIGHT_THRESHOLD && doorStatus == DOWN){
     Serial.println("Opening door");
-    setMotor(speed, direction);
-    delay(MOTOR_DURATION);
-    setMotor(0, direction);
-    delay(MOTOR_DURATION);
-    //switch direction
-    direction = !direction;
-
+    moveDoor(UP);
+    doorStatus = UP;
   }
 
   //if it is night, & the last action is NOT closing, close the door
-  if (sensorValue <= DAYLIGHT_THRESHOLD && prevdirection != direction){
+  if (sensorValue <= DAYLIGHT_THRESHOLD && doorStatus == UP){
     Serial.println("Closing door");
-    setMotor(speed, direction);
-    delay(MOTOR_DURATION);
-    setMotor(0, direction);
-    delay(MOTOR_DURATION);
-  //switch direction
-  direction = ! direction;
-
+    moveDoor(DOWN);
+    doorStatus = DOWN;
   }
 }
 
-void setMotor(int speed, boolean direction)
-{
-  analogWrite(enablePin, speed);
+// Idea is to turn on the motor in the correct direction
+// Then keep polling to see if the button is pressed or the time is up
+
+void moveDoor(boolean direction){
+  int pin;
+  if (direction == DOWN)
+    pin = FLOOR_PIN;
+  if (direction == UP)
+    pin = ROOF_PIN;
+
+  Serial.print(digitalRead(FLOOR_PIN));
+  Serial.print(" ");
+  Serial.println(digitalRead(ROOF_PIN));
+
+  analogWrite(enablePin, SPEED);
   digitalWrite(in1Pin, !direction);
   digitalWrite(in2Pin, direction);
+  Serial.println(digitalRead(pin));
+  while(!digitalRead(pin)){
+    (void)0;
+  }
+  Serial.println("Pin hit! Stopping motors");
+  analogWrite(enablePin, 0);
 }
+
