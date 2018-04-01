@@ -4,12 +4,15 @@
 #define DOWN true
 #define UP false
 
-// configurables
+// Configurables
+// Motor speed
 #define SPEED 128
+// Time to sleep after moving door (seconds)
 #define SLEEPTIME 1000
+// Threshold before it is considered 'morning'
 #define LIGHT_THRESHOLD 250
+// Threshold before it is considered 'night'
 #define DARK_THRESHOLD 250
-#define MOTOR_DURATION 3000
 
 // Pins
 #define ROOF_PIN 2
@@ -20,7 +23,6 @@
 #define PHOTORESISTOR_PIN A0
 
 int sensorValue = 0;
-int i;
 boolean doorStatus = DOWN;
 
 void setup()
@@ -39,21 +41,13 @@ void setup()
 
 void loop()
 {
-  //LowPower.powerDown(SLEEP_8S, ADC_ON, BOD_ON);
+  // Sleep for 1 minute
+  lowPowerSleep(60);
 
-  // Not sure why this is necessary
-  /*
-  for(i = 0; i < 10; i++){
-    LowPower.idle(SLEEP_8S, ADC_OFF, TIMER2_OFF, TIMER1_OFF, TIMER0_OFF,
-                  SPI_OFF, USART0_OFF, TWI_OFF);
-  }
-  */
-  //delay(20);
   sensorValue = analogRead(PHOTORESISTOR_PIN);
 
   Serial.print("sensor = ");
   Serial.println(sensorValue);
-  delay(500);
 
   //if it is daylight, & the last action is NOT opening, open the door
   if (sensorValue >= LIGHT_THRESHOLD && doorStatus == DOWN){
@@ -61,7 +55,7 @@ void loop()
     moveDoor(UP);
     doorStatus = UP;
     // Now we sleep for some time to prevent 'flickering'
-    delay(SLEEPTIME);
+    lowPowerSleep(SLEEPTIME);
   }
 
   //if it is night, & the last action is NOT closing, close the door
@@ -70,7 +64,7 @@ void loop()
     moveDoor(DOWN);
     doorStatus = DOWN;
     // Now we sleep for some time to prevent 'flickering'
-    delay(SLEEPTIME);
+    lowPowerSleep(SLEEPTIME);
   }
 }
 
@@ -97,5 +91,16 @@ void moveDoor(boolean direction){
   }
   Serial.println("Pin hit! Stopping motors");
   analogWrite(ENABLE_PIN, 0);
+}
+
+void lowPowerSleep(int n){
+  // Call the LowPower.idle() function n times
+  // This allows us to have low-power idle for
+  // more than the pre-defined timings
+  int i;
+  for (i = 0; i < n; i++){
+    LowPower.idle(SLEEP_1S, ADC_OFF, TIMER2_OFF, TIMER1_OFF, TIMER0_OFF,
+                  SPI_OFF, USART0_OFF, TWI_OFF);
+  }
 }
 
