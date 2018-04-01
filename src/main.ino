@@ -1,29 +1,33 @@
 #include <LowPower.h>
 
-#define DAYLIGHT_THRESHOLD 250
-#define MOTOR_DURATION 3000
-#define ROOF_PIN 2
-#define FLOOR_PIN 3
+// misc defines
 #define DOWN true
 #define UP false
-#define SPEED 128
 
-int enablePin = 11;
-int in1Pin = 10;
-int in2Pin = 9;
-const int analogInPin = A0;
-const int speed = 128;
-boolean direction = true;
-boolean prevdirection = false;
+// configurables
+#define SPEED 128
+#define SLEEPTIME 1000
+#define LIGHT_THRESHOLD 250
+#define DARK_THRESHOLD 250
+#define MOTOR_DURATION 3000
+
+// Pins
+#define ROOF_PIN 2
+#define FLOOR_PIN 3
+#define ENABLE_PIN 11
+#define MOTOR_PIN_1 10
+#define MOTOR_PIN_2 9
+#define PHOTORESISTOR_PIN A0
+
 int sensorValue = 0;
 int i;
 boolean doorStatus = DOWN;
 
 void setup()
 {
-  pinMode(in1Pin, OUTPUT);
-  pinMode(in2Pin, OUTPUT);
-  pinMode(enablePin, OUTPUT);
+  pinMode(MOTOR_PIN_1, OUTPUT);
+  pinMode(MOTOR_PIN_2, OUTPUT);
+  pinMode(ENABLE_PIN, OUTPUT);
   pinMode(ROOF_PIN, INPUT_PULLUP);
   pinMode(FLOOR_PIN, INPUT_PULLUP);
   pinMode(LED_BUILTIN, OUTPUT);
@@ -45,24 +49,28 @@ void loop()
   }
   */
   //delay(20);
-  sensorValue = analogRead(analogInPin);
+  sensorValue = analogRead(PHOTORESISTOR_PIN);
 
   Serial.print("sensor = ");
   Serial.println(sensorValue);
   delay(500);
 
   //if it is daylight, & the last action is NOT opening, open the door
-  if (sensorValue >= DAYLIGHT_THRESHOLD && doorStatus == DOWN){
+  if (sensorValue >= LIGHT_THRESHOLD && doorStatus == DOWN){
     Serial.println("Opening door");
     moveDoor(UP);
     doorStatus = UP;
+    // Now we sleep for some time to prevent 'flickering'
+    delay(SLEEPTIME);
   }
 
   //if it is night, & the last action is NOT closing, close the door
-  if (sensorValue <= DAYLIGHT_THRESHOLD && doorStatus == UP){
+  if (sensorValue <= DARK_THRESHOLD && doorStatus == UP){
     Serial.println("Closing door");
     moveDoor(DOWN);
     doorStatus = DOWN;
+    // Now we sleep for some time to prevent 'flickering'
+    delay(SLEEPTIME);
   }
 }
 
@@ -70,7 +78,7 @@ void loop()
 // Then keep polling to see if the button is pressed or the time is up
 
 void moveDoor(boolean direction){
-  int pin;
+  byte pin;
   if (direction == DOWN)
     pin = FLOOR_PIN;
   if (direction == UP)
@@ -80,14 +88,14 @@ void moveDoor(boolean direction){
   Serial.print(" ");
   Serial.println(digitalRead(ROOF_PIN));
 
-  analogWrite(enablePin, SPEED);
-  digitalWrite(in1Pin, !direction);
-  digitalWrite(in2Pin, direction);
+  analogWrite(ENABLE_PIN, SPEED);
+  digitalWrite(MOTOR_PIN_1, !direction);
+  digitalWrite(MOTOR_PIN_2, direction);
   Serial.println(digitalRead(pin));
   while(!digitalRead(pin)){
     (void)0;
   }
   Serial.println("Pin hit! Stopping motors");
-  analogWrite(enablePin, 0);
+  analogWrite(ENABLE_PIN, 0);
 }
 
