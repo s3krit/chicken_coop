@@ -5,8 +5,6 @@
 #define UP false
 
 // Configurables
-// Motor speed
-#define SPEED 128
 // Time to sleep after moving door (seconds)
 #define SLEEPTIME 600
 // Threshold before it is considered 'morning'
@@ -17,9 +15,8 @@
 // Pins
 #define ROOF_PIN 3
 #define FLOOR_PIN 2
-#define ENABLE_PIN 11
-#define MOTOR_PIN_1 10
-#define MOTOR_PIN_2 9
+#define MOTOR_PIN_1 9
+#define MOTOR_PIN_2 10
 #define PHOTORESISTOR_PIN A0
 
 int sensorValue = 0;
@@ -29,23 +26,28 @@ void setup()
 {
   pinMode(MOTOR_PIN_1, OUTPUT);
   pinMode(MOTOR_PIN_2, OUTPUT);
-  pinMode(ENABLE_PIN, OUTPUT);
-  pinMode(ROOF_PIN, INPUT_PULLUP);
-  pinMode(FLOOR_PIN, INPUT_PULLUP);
+  pinMode(ROOF_PIN, INPUT);
+  pinMode(FLOOR_PIN, INPUT);
   pinMode(LED_BUILTIN, OUTPUT);
-  digitalWrite(ROOF_PIN, HIGH);
-  digitalWrite(FLOOR_PIN, HIGH);
+
+  digitalWrite(MOTOR_PIN_1, LOW);
+  digitalWrite(MOTOR_PIN_2, LOW);
 
   // Set door status depending on which pin is pressed
   doorStatus = digitalRead(ROOF_PIN);
+
+  Serial.begin(9600);
+  Serial.println("Starting up...");
 }
 
 void loop()
 {
-  // Sleep for 1 minute
-  delay(500);
+  // Sleep for a second
+  delay(1000);
 
   sensorValue = analogRead(A0);
+  Serial.print("Light sensor is ");
+  Serial.println(sensorValue);
 
   //if it is daylight, & the last action is NOT opening, open the door
   if (sensorValue >= LIGHT_THRESHOLD && doorStatus == DOWN){
@@ -70,19 +72,37 @@ void loop()
 // Then keep polling to see if the button is pressed or the time is up
 
 void moveDoor(boolean direction){
-  byte pin;
-  if (direction == DOWN)
-    pin = FLOOR_PIN;
-  if (direction == UP)
-    pin = ROOF_PIN;
-
-  analogWrite(ENABLE_PIN, SPEED);
-  digitalWrite(MOTOR_PIN_1, !direction);
-  digitalWrite(MOTOR_PIN_2, direction);
-  while(!digitalRead(pin)){
-    (void)0;
+  if (direction == DOWN){
+    Serial.println("Closing door");
+    digitalWrite(MOTOR_PIN_1, HIGH);
   }
-  analogWrite(ENABLE_PIN, 0);
+  if (direction == UP){
+    Serial.println("Opening door");
+    digitalWrite(MOTOR_PIN_2, HIGH);
+  }
+
+  // Wait for two seconds to clear the switch
+  delay(2000);
+
+  byte roofSwitch = LOW;
+  byte floorSwitch = LOW;
+  while(1){
+    roofSwitch = digitalRead(ROOF_PIN);
+    floorSwitch = digitalRead(FLOOR_PIN);
+    if (roofSwitch == HIGH || floorSwitch == HIGH){
+      Serial.print("Stopping door because ");
+      if (roofSwitch == HIGH){
+        Serial.print("roof");
+      } else {
+        Serial.print("floor");
+      }
+      Serial.println(" switch is closed");
+      break;
+    }
+  }
+
+  digitalWrite(MOTOR_PIN_1, LOW);
+  digitalWrite(MOTOR_PIN_2, LOW);
 }
 
 void lowPowerSleep(int n){
@@ -95,4 +115,3 @@ void lowPowerSleep(int n){
                   SPI_OFF, USART0_OFF, TWI_OFF);
   }
 }
-
